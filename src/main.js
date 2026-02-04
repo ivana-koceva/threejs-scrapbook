@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
-const renderer = new THREE.WebGLRenderer({canvas});
+const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
 
 camera.position.z = 5;
 
@@ -72,8 +72,11 @@ pageTwo.position.x = -0.9;
 pageTwo.position.z = 0.1;
 
 
+// add orbit controls
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.03;
 
-const controls = new OrbitControls(camera, renderer.domElement);
 
 const spaceTexture = new THREE.TextureLoader().load('/images/sky.jpg');
 scene.background = spaceTexture;
