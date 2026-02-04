@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { objectGroup } from 'three/src/nodes/TSL.js';
 
 // defaults for threejs
 const scene = new THREE.Scene();
@@ -33,7 +32,7 @@ function roundedRectShape(width, height, radius) {
 }
 
 // add geometry to object
-function geometry(object, depth, bevel, curves) {
+function createExtrudeGeometry(object, depth, bevel, curves) {
   return new THREE.ExtrudeGeometry(object, {
     depth: depth,
     bevelEnabled: bevel,
@@ -42,7 +41,7 @@ function geometry(object, depth, bevel, curves) {
 }
 
 // add repeating texture to object
-function texture(path) {
+function createRepeatingTextureMesh(path) {
   const texture = new THREE.TextureLoader().load(path);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 1);
@@ -52,21 +51,26 @@ function texture(path) {
   });
 }
 
+// create object meshes and add them to scene
+function addShapeToScene(shape, depth, bevel, curves, path) {
+  const object = new THREE.Mesh(createExtrudeGeometry(shape, depth, bevel, curves), createRepeatingTextureMesh(path));
+  scene.add(object);
+  return object;
+}
+
 // add objects
 const shape = roundedRectShape(4, 3, 0.15);
-const shape2 = roundedRectShape(1.9, 2.8, 0.15);
+const shape2 = roundedRectShape(1.9, 2.8, 0);
 
-const cover = new THREE.Mesh(geometry(shape, 0.15, false, 12), texture("/images/leather.jpg"));
-const pageOne = new THREE.Mesh(geometry(shape2, 0.05, false, 12), texture("/images/paper2.jpg"));
+addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg");
+const pageOne = addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg");
 pageOne.position.x = 0.9;
 pageOne.position.z = 0.1;
 
-const pageTwo = new THREE.Mesh(geometry(shape2, 0.05, false, 12), texture("/images/paper2.jpg"));
+const pageTwo = addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg");
 pageTwo.position.x = -0.9;
 pageTwo.position.z = 0.1;
-scene.add(cover);
-scene.add(pageOne);
-scene.add(pageTwo);
+
 
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -75,10 +79,10 @@ const spaceTexture = new THREE.TextureLoader().load('/images/sky.jpg');
 scene.background = spaceTexture;
 
 // update animation each second
-function animate() {
-  requestAnimationFrame(animate);
+function animateRenderer() {
+  requestAnimationFrame(animateRenderer);
   controls.update();
   renderer.render(scene, camera);
 }
 
-animate();
+animateRenderer();
