@@ -7,7 +7,7 @@ const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.inner
 const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
 
-camera.position.z = 5;
+camera.position.z = 3;
 
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -59,17 +59,14 @@ function addShapeToScene(shape, depth, bevel, curves, path) {
 }
 
 // add objects
-const shape = roundedRectShape(4, 3, 0.15);
+const shape = roundedRectShape(2, 3, 0.15);
 const shape2 = roundedRectShape(1.9, 2.8, 0);
 
-addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg");
-const pageOne = addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg");
-pageOne.position.x = 0.9;
-pageOne.position.z = 0.1;
+addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
+addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(-1, 0, 0);
+addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.9, 0, 0.1);
+addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
 
-const pageTwo = addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg");
-pageTwo.position.x = -0.9;
-pageTwo.position.z = 0.1;
 
 
 // add orbit controls
