@@ -6,6 +6,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
+const coverPivot = new THREE.Group();
 
 camera.position.z = 3;
 
@@ -13,6 +14,7 @@ renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+scene.add(coverPivot);
 
 // draw rounded rectangle in 2d
 function roundedRectShape(width, height, radius) {
@@ -62,12 +64,12 @@ function addShapeToScene(shape, depth, bevel, curves, path) {
 const shape = roundedRectShape(2, 3, 0.15);
 const shape2 = roundedRectShape(1.9, 2.8, 0);
 
-addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
+const frontCover = addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
 addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(-1, 0, 0);
 addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.9, 0, 0.1);
 addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
 
-
+coverPivot.add(frontCover);
 
 // add orbit controls
 const controls = new OrbitControls(camera, canvas);
