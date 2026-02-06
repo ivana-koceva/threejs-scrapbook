@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // defaults for threejs
 const scene = new THREE.Scene();
@@ -82,14 +81,6 @@ window.addEventListener("click", () => {
   }
 });
 
-
-// add orbit controls
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.03;
-controls.enabled = !opening;
-
-
 const spaceTexture = new THREE.TextureLoader().load('/images/sky.jpg');
 scene.background = spaceTexture;
 
@@ -110,7 +101,6 @@ function animateRenderer() {
     }
   }
 
-  controls.update();
   renderer.render(scene, camera);
 }
 
