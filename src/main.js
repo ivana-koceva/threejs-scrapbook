@@ -60,14 +60,14 @@ function addShapeToScene(shape, depth, bevel, curves, path) {
 }
 
 // add objects
-const shape = roundedRectShape(2, 3, 0.15);
+const shape = roundedRectShape(2, 3, 0.1);
 const shape2 = roundedRectShape(1.9, 2.8, 0);
 
 const frontCover = addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg");
-frontCover.position.set(-1, 0, 0);
-addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
-// addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.9, 0, 0.1);
-// addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
+frontCover.position.set(-1, 0, -0.02);
+addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, -0.06);
+addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.95, 0, -0.01);
+//addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
 
 coverPivot.add(frontCover);
 coverPivot.rotation.y = Math.PI;
