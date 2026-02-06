@@ -64,17 +64,30 @@ function addShapeToScene(shape, depth, bevel, curves, path) {
 const shape = roundedRectShape(2, 3, 0.15);
 const shape2 = roundedRectShape(1.9, 2.8, 0);
 
-const frontCover = addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
-addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(-1, 0, 0);
-addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.9, 0, 0.1);
-addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
+const frontCover = addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg");
+frontCover.position.set(-1, 0, 0);
+addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, 0);
+// addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.9, 0, 0.1);
+// addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
 
 coverPivot.add(frontCover);
+coverPivot.rotation.y = Math.PI;
+
+let isOpen = false;
+let opening = false;
+
+window.addEventListener("click", () => {
+  if (!opening) {
+    opening = true;
+  }
+});
+
 
 // add orbit controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.03;
+controls.enabled = !opening;
 
 
 const spaceTexture = new THREE.TextureLoader().load('/images/sky.jpg');
@@ -83,6 +96,20 @@ scene.background = spaceTexture;
 // update animation each second
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
+
+  if (opening) {
+    const targetRotation = isOpen ? Math.PI : 0;
+    const speed = 0.05;
+
+    coverPivot.rotation.y += (targetRotation - coverPivot.rotation.y) * speed;
+
+    if (Math.abs(coverPivot.rotation.y - targetRotation) < 0.01) {
+      coverPivot.rotation.y = targetRotation;
+      opening = false;
+      isOpen = !isOpen;
+    }
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
