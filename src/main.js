@@ -5,7 +5,6 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
-const coverPivot = new THREE.Group();
 
 camera.position.z = 3;
 
@@ -13,7 +12,6 @@ renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-scene.add(coverPivot);
 
 // draw rounded rectangle in 2d
 function roundedRectShape(width, height, radius) {
@@ -60,44 +58,95 @@ function addShapeToScene(shape, depth, bevel, curves, path) {
 }
 
 // add objects
-const shape = roundedRectShape(2, 3, 0.1);
-const shape2 = roundedRectShape(1.9, 2.8, 0);
+const coverShape = roundedRectShape(2, 3, 0.1);
+const pageShape = roundedRectShape(1.9, 2.8, 0);
 
-const frontCover = addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg");
-frontCover.position.set(-1, 0, -0.02);
-addShapeToScene(shape, 0.15, false, 12,"/images/leather.jpg").position.set(1, 0, -0.06);
-addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(0.95, 0, -0.01);
-//addShapeToScene(shape2, 0.05, false, 12,"/images/paper2.jpg").position.set(-0.9, 0, 0.1);
+// cover pivot
+const coverPivot = new THREE.Group();
+scene.add(coverPivot);
+
+
+const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+frontCover.position.set(-1, 0, -0.1);
+
+const backCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+backCover.position.set(1, 0, -0.1);
 
 coverPivot.add(frontCover);
-coverPivot.rotation.y = Math.PI;
+coverPivot.rotation.y = Math.PI; // closed
 
-let isOpen = false;
-let opening = false;
+// pages
+const pages = [];
+const pageCount = 10;
+
+for (let i = 0; i < pageCount; i++) {
+  const pagePivot = new THREE.Group();
+
+  const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper2.jpg");
+
+  // move page away from pivot so it flips from spine
+  page.position.set(-0.95, 0, -0.001 );
+
+  pagePivot.add(page);
+  pagePivot.rotation.y = Math.PI; // closed
+
+  scene.add(pagePivot);
+  pages.push(pagePivot);
+}
+
+// background
+const backgroundTexture = new THREE.TextureLoader().load('/images/sky.jpg');
+scene.background = backgroundTexture;
+
+// flipping logic
+let flipping = false;
+let coverFlipped = false;
+let currentPage = 0;
 
 window.addEventListener("click", () => {
-  if (!opening) {
-    opening = true;
+  if (flipping) return;
+
+  // first click opens cover
+  if (!coverFlipped) {
+    flipping = "cover";
+    return;
+  }
+
+  // next clicks flip pages
+  if (currentPage < pages.length) {
+    flipping = "page";
   }
 });
 
-const spaceTexture = new THREE.TextureLoader().load('/images/sky.jpg');
-scene.background = spaceTexture;
-
-// update animation each second
+// update animation each frame
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  if (opening) {
-    const targetRotation = isOpen ? Math.PI : 0;
-    const speed = 0.05;
+  const speed = 0.03;
 
-    coverPivot.rotation.y += (targetRotation - coverPivot.rotation.y) * speed;
+  // flip cover
+  if (flipping === "cover") {
+    coverPivot.rotation.y +=
+      (0 - coverPivot.rotation.y) * speed;
 
-    if (Math.abs(coverPivot.rotation.y - targetRotation) < 0.01) {
-      coverPivot.rotation.y = targetRotation;
-      opening = false;
-      isOpen = !isOpen;
+    if (Math.abs(coverPivot.rotation.y) < 0.01) {
+      coverPivot.rotation.y = 0;
+      coverFlipped = true;
+      flipping = false;
+    }
+  }
+
+  // flip single page
+  if (flipping === "page") {
+    const page = pages[currentPage];
+
+    page.rotation.y +=
+      (0 - page.rotation.y) * speed;
+
+    if (Math.abs(page.rotation.y) < 0.01) {
+      page.rotation.y = 0;
+      currentPage++;
+      flipping = false;
     }
   }
 
