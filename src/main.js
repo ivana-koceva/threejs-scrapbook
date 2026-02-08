@@ -65,6 +65,8 @@ const pageShape = roundedRectShape(1.9, 2.8, 0);
 const coverPivot = new THREE.Group();
 scene.add(coverPivot);
 
+const backPivot = new THREE.Group();
+scene.add(backPivot);
 
 const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
 frontCover.position.set(-1, 0, -0.1);
@@ -74,6 +76,9 @@ backCover.position.set(1, 0, -0.1);
 
 coverPivot.add(frontCover);
 coverPivot.rotation.y = Math.PI; // closed
+
+backPivot.add(backCover);
+backPivot.rotation.y = 0; // open
 
 // pages
 const pages = [];
@@ -108,7 +113,7 @@ window.addEventListener("click", () => {
 
   // first click opens cover
   if (!coverFlipped) {
-    flipping = "cover";
+    flipping = "frontCover";
     return;
   }
 
@@ -116,16 +121,21 @@ window.addEventListener("click", () => {
   if (currentPage < pages.length) {
     flipping = "page";
   }
+
+   // next clicks closes back cover
+  if (currentPage === pages.length) {
+    flipping = "backCover";
+  }
 });
 
 // update animation each frame
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.03;
+  const speed = 0.04;
 
   // flip cover
-  if (flipping === "cover") {
+  if (flipping === "frontCover") {
     coverPivot.rotation.y +=
       (0 - coverPivot.rotation.y) * speed;
 
@@ -146,6 +156,16 @@ function animateRenderer() {
     if (Math.abs(page.rotation.y) < 0.01) {
       page.rotation.y = 0;
       currentPage++;
+      flipping = false;
+    }
+  }
+
+  // flip cover
+  if (flipping === "backCover") {
+    const targetRotation = -Math.PI;
+    backPivot.rotation.y += (targetRotation - backPivot.rotation.y) * speed;
+    if (Math.abs(backPivot.rotation.y - targetRotation) < 0.01) {
+      backPivot.rotation.y = targetRotation;
       flipping = false;
     }
   }
