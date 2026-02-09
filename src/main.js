@@ -5,6 +5,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
+
+const leftButton = document.querySelector("#left");
 const rightButton = document.querySelector("#right");
 
 camera.position.z = 3;
@@ -91,7 +93,7 @@ for (let i = 0; i < pageCount; i++) {
   const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper2.jpg");
 
   // move page away from pivot so it flips from spine
-  page.position.set(-0.95, 0, -0.001 );
+  page.position.set(-0.95, 0, -0.001);
 
   pagePivot.add(page);
   pagePivot.rotation.y = Math.PI; // closed
@@ -108,9 +110,12 @@ scene.background = backgroundTexture;
 let flipping = false;
 let coverFlipped = false;
 let currentPage = 0;
+let backwards = false;
 
 rightButton.addEventListener("click", () => {
   if (flipping) return;
+
+  backwards = false;
 
   // first click opens cover
   if (!coverFlipped) {
@@ -118,14 +123,40 @@ rightButton.addEventListener("click", () => {
     return;
   }
 
-  // next clicks flip pages
+  // next click flip pages
   if (currentPage < pages.length) {
     flipping = "page";
+    return;
   }
 
-   // next clicks closes back cover
+  // next click closes back cover
   if (currentPage === pages.length) {
     flipping = "backCover";
+  }
+});
+
+leftButton.addEventListener("click", () => {
+  if (flipping) return;
+  
+  backwards = true;
+  
+  // next clicks opens back cover
+  if (currentPage === pages.length && backPivot.rotation.y !== 0) {
+    flipping = "backCover";
+    return;
+  }
+
+  // next clicks flip pages
+  if (currentPage > 0) {
+    currentPage--;
+    flipping = "page";
+    return;
+  }
+
+  // next clicks closes cover
+  if (coverFlipped) {
+    flipping = "frontCover";
+    return;
   }
 });
 
@@ -133,42 +164,75 @@ rightButton.addEventListener("click", () => {
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.04;
+  const speed = 0.07;
 
-  // flip cover
+  // flip front cover
   if (flipping === "frontCover") {
-    coverPivot.rotation.y +=
+    if(backwards) {
+      coverPivot.rotation.y +=
+      (Math.PI - coverPivot.rotation.y) * speed;
+
+      if (Math.abs(coverPivot.rotation.y - Math.PI) < 0.01) {
+        coverPivot.rotation.y = Math.PI;
+        coverFlipped = false;
+        flipping = false;
+      }
+    }
+    else {
+      coverPivot.rotation.y +=
       (0 - coverPivot.rotation.y) * speed;
 
-    if (Math.abs(coverPivot.rotation.y) < 0.01) {
-      coverPivot.rotation.y = 0;
-      coverFlipped = true;
-      flipping = false;
+      if (Math.abs(coverPivot.rotation.y) < 0.01) {
+        coverPivot.rotation.y = 0;
+        coverFlipped = true;
+        flipping = false;
+      }
     }
   }
 
   // flip single page
   if (flipping === "page") {
     const page = pages[currentPage];
+    if (backwards) {
+      page.rotation.y +=
+      (Math.PI - page.rotation.y) * speed;
 
-    page.rotation.y +=
+      if (Math.abs(page.rotation.y - Math.PI) < 0.01) {
+        page.rotation.y = Math.PI;
+        flipping = false;
+      }
+    }
+    else {
+      page.rotation.y +=
       (0 - page.rotation.y) * speed;
 
-    if (Math.abs(page.rotation.y) < 0.01) {
-      page.rotation.y = 0;
-      currentPage++;
-      flipping = false;
+      if (Math.abs(page.rotation.y) < 0.01) {
+        page.rotation.y = 0;
+        currentPage++;
+        flipping = false;
+      }
     }
+    
   }
 
-  // flip cover
+  // flip back cover
   if (flipping === "backCover") {
-    const targetRotation = -Math.PI;
-    backPivot.rotation.y += (targetRotation - backPivot.rotation.y) * speed;
-    if (Math.abs(backPivot.rotation.y - targetRotation) < 0.01) {
-      backPivot.rotation.y = targetRotation;
-      flipping = false;
+    if (backwards) {
+      backPivot.rotation.y += (0 - backPivot.rotation.y) * speed;
+      if (Math.abs(backPivot.rotation.y - 0) < 0.01) {
+        backPivot.rotation.y = 0;
+        flipping = false;
+      }
     }
+    else {
+      const targetRotation = -Math.PI;
+      backPivot.rotation.y += (targetRotation - backPivot.rotation.y) * speed;
+      if (Math.abs(backPivot.rotation.y - targetRotation) < 0.01) {
+        backPivot.rotation.y = targetRotation;
+        flipping = false;
+      }
+    }
+    
   }
 
   renderer.render(scene, camera);
