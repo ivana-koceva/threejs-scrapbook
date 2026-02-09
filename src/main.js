@@ -5,6 +5,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
+const rightButton = document.querySelector("#right");
 
 camera.position.z = 3;
 
@@ -108,7 +109,7 @@ let flipping = false;
 let coverFlipped = false;
 let currentPage = 0;
 
-window.addEventListener("click", () => {
+rightButton.addEventListener("click", () => {
   if (flipping) return;
 
   // first click opens cover

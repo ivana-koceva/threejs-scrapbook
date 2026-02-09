@@ -2,3 +2,22 @@ body {
   margin: 0;
   overflow: hidden;
 }
+button {
+  position: absolute;
+  transform: translateY(-50%);
+  background: transparent;
+  border: white 1px solid;
+  border-radius: 25px;
+  padding: 10px 15px;
+}
+#left {
+  left: 5%;
+  top: 50%;
+}
+#right {
+  top: 50%;
+  right: 5%;
+}
+button i {
+  color: white;
+}
