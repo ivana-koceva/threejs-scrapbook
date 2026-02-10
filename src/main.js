@@ -11,6 +11,10 @@ const rightButton = document.querySelector("#right");
 
 camera.position.z = 3;
 
+// create group to rotate book object
+const bookGroup = new THREE.Group();
+scene.add(bookGroup);
+
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -67,9 +71,11 @@ const pageShape = roundedRectShape(1.9, 2.8, 0);
 // cover pivot
 const coverPivot = new THREE.Group();
 scene.add(coverPivot);
+bookGroup.add(coverPivot);
 
 const backPivot = new THREE.Group();
 scene.add(backPivot);
+bookGroup.add(backPivot);
 
 const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
 frontCover.position.set(-1, 0, -0.1);
@@ -99,6 +105,7 @@ for (let i = 0; i < pageCount; i++) {
   pagePivot.rotation.y = Math.PI; // closed
 
   scene.add(pagePivot);
+  bookGroup.add(pagePivot);
   pages.push(pagePivot);
 }
 
@@ -239,3 +246,36 @@ function animateRenderer() {
 }
 
 animateRenderer();
+
+
+function layoutBook() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const isPortrait = height > width;
+
+  const BASE_SCALE = 1;
+
+  // scale relative to screen 
+  const minDimension = Math.min(width, height);
+  let scale = BASE_SCALE * (minDimension / 900);
+  scale = THREE.MathUtils.clamp(scale, 0.55, 1.05);
+
+  bookGroup.scale.set(scale, scale, scale);
+
+  // center book
+  bookGroup.position.set(0, 0, 0);
+
+  if (isPortrait) {
+    // if on mobile rotate book
+    bookGroup.rotation.z = -Math.PI / 2;
+  } else {
+    bookGroup.rotation.z = 0;
+  }
+
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+window.addEventListener("resize", layoutBook);
+layoutBook();

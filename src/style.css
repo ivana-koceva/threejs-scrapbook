@@ -9,15 +9,34 @@ button {
   border: white 1px solid;
   border-radius: 25px;
   padding: 10px 15px;
+  top: 50%;
 }
 #left {
   left: 5%;
-  top: 50%;
 }
 #right {
-  top: 50%;
   right: 5%;
 }
 button i {
   color: white;
+}
+@media (orientation: portrait) {
+  #left {
+    top: 10%;
+  }
+  #right {
+    top: 90%;
+    right: unset;
+  }
+  #left,
+  #right {
+    left: 45%;
+    padding: 15px 10px;
+  }
+  #left i,
+  #right i {
+    display: inline-block;
+    transform: rotate(90deg);
+    line-height: unset;
+  }
 }
