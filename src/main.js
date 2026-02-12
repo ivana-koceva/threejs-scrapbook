@@ -247,34 +247,27 @@ function animateRenderer() {
 
 animateRenderer();
 
-
 function layoutBook() {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const isPortrait = height > width;
 
-  const BASE_SCALE = 1;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  
+  camera.position.z = 3;
+  
+  camera.updateProjectionMatrix();
 
-  // scale relative to screen 
+  // scale relative to screen
   const minDimension = Math.min(width, height);
-  let scale = BASE_SCALE * (minDimension / 900);
-  scale = THREE.MathUtils.clamp(scale, 0.55, 1.05);
-
+  let scale = minDimension / 1200;
+  scale = THREE.MathUtils.clamp(scale, 0.4, 0.9);
+  
   bookGroup.scale.set(scale, scale, scale);
 
-  // center book
-  bookGroup.position.set(0, 0, 0);
-
-  if (isPortrait) {
-    // if on mobile rotate book
-    bookGroup.rotation.z = -Math.PI / 2;
-  } else {
-    bookGroup.rotation.z = 0;
-  }
-
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  renderer.setSize(width, height);
+  // if on mobile rotate book
+  const isPortrait = height > width;
+  bookGroup.rotation.z = isPortrait ? -Math.PI / 2 : 0;
 }
 
 window.addEventListener("resize", layoutBook);
