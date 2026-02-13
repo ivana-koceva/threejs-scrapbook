@@ -47,23 +47,27 @@ imageForm.addEventListener("submit", (e) => {
           texture.wrapT = THREE.ClampToEdgeWrapping;
           texture.colorSpace = THREE.SRGBColorSpace;
 
+          const isLandscape = texture.image.width > texture.image.height;
+
+          // center the transform pivot (rotate and scale from the middle)
+          texture.center.set(0.5, 0.5);
+
+          texture.rotation = isLandscape ? Math.PI / 2 : 0;
+
           // plane aspect = exact geometry size
           const pageAspect = 1.9 / 2.8;
-          const imageAspect = texture.image.width / texture.image.height;
-
-          texture.repeat.set(1, 1);
-          texture.offset.set(0, 0);
+          const imageAspect = isLandscape 
+            ? texture.image.height / texture.image.width 
+            : texture.image.width / texture.image.height;
 
           // "object-fit: cover"
           if (imageAspect > pageAspect) {
-            const scale = pageAspect / imageAspect;
-            texture.repeat.set(scale, 1);
-            texture.offset.set((1 - scale) / 2, 0);
+            texture.repeat.set(pageAspect / imageAspect, 1);
           } else {
-            const scale = imageAspect / pageAspect;
-            texture.repeat.set(1, scale);
-            texture.offset.set(0, (1 - scale) / 2);
+            texture.repeat.set(1, imageAspect / pageAspect);
           }
+          
+          texture.offset.set(0, 0);
 
           photoMaterial.map = texture;
           photoMaterial.needsUpdate = true;
