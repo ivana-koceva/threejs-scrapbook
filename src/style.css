@@ -28,9 +28,10 @@ body, html {
   backdrop-filter: blur(5px);
   border: white 1px solid;
   border-radius: 15px;
-  padding: 25px;
+  padding: 35px;
   font-family: Arial;
   font-size: 28px;
+  margin: 100px;
 }
 #image-button {
   background: white;
