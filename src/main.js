@@ -302,7 +302,7 @@ backPivot.rotation.y = 0; // open
 // pages
 const pages = [];
 const pageSurfaces = []; 
-const pageCount = 2;
+const pageCount = 10;
 const requiredPhotos = pageCount * 2;
 
 for (let i = 0; i < pageCount; i++) {
