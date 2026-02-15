@@ -21,6 +21,7 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
+  display: none;
 }
 #image-form {
   display: grid;

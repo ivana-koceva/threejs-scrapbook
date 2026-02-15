@@ -50,9 +50,10 @@ imageForm.addEventListener("submit", async (e) => {
   toggleLoader(true, `Uploading photos`);
 
   // upload images to bucket
-  const uploadPromises = files.slice(0, requiredPhotos).map(async (file) => {
-    const fileName = `${Date.now()}-${file.name}`;
-    const { data } = await supabase.storage.from('scrapbook-photos').upload(fileName, file);
+  const uploadPromises = files.slice(0, requiredPhotos).map(async (file, i) => {
+    const compressedFile = await compressImage(file);
+    const fileName = `${Date.now()}-${i}-${file.name}`;
+    const { data } = await supabase.storage.from('scrapbook-photos').upload(fileName, compressedFile);
     if (data) {
       const { data: publicUrl } = supabase.storage.from('scrapbook-photos').getPublicUrl(fileName);
       return publicUrl.publicUrl;
@@ -139,6 +140,39 @@ function loadPhotosIntoBook(urls) {
   });
 };
 
+// compress images before upload
+async function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // convert to blob 70% quality 
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.7);
+      };
+    };
+  });
+}
+
 async function checkUrlForScrapbook() {
   const urlParams = new URLSearchParams(window.location.search);
   const bookId = urlParams.get('id');
@@ -157,10 +191,16 @@ async function checkUrlForScrapbook() {
     if (data) {
       await sleep(1000);
       loadPhotosIntoBook(data.photos);
-      shareButton.style.display = "flex";
     } else {
       toggleLoader(false);
+      alert("Scrapbook not found!");
+      // show upload form if id is wrong
+      window.history.replaceState({}, document.title, window.location.pathname);
+      document.querySelector("#upload").style.display = "flex";
     }
+  } else {
+    // show upload form if no id
+    document.querySelector("#upload").style.display = "flex";
   }
 }
 
@@ -181,7 +221,6 @@ shareButton.addEventListener("click", () => {
 
   // copy to clipboard
   navigator.clipboard.writeText(shareUrl).then(() => {
-    // Visual feedback
     const originalText = shareButton.innerHTML;
     shareButton.innerHTML = "Copied!";
     shareButton.style.backgroundColor = "white"; 
@@ -393,7 +432,7 @@ leftButton.addEventListener("click", () => {
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.06;
+  const speed = 0.05;
 
   // flip front cover
   if (flipping === "frontCover") {
