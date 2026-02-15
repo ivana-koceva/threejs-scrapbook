@@ -13,8 +13,10 @@ const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
 const leftButton = document.querySelector("#left");
 const rightButton = document.querySelector("#right");
+const shareButton = document.querySelector("#share");
 leftButton.style.display = "none";
 rightButton.style.display = "none";
+shareButton.style.display = "none";
 
 camera.position.z = 3;
 
@@ -22,6 +24,9 @@ camera.position.z = 3;
 const imageForm = document.querySelector("#image-form");
 const imageInput = document.querySelector("#image-input");
 
+let currentScrapbookId = null;
+
+// upload to supabase
 imageForm.addEventListener("submit", async (e) => {
   e.preventDefault(); // stop page refresh
 
@@ -47,7 +52,7 @@ imageForm.addEventListener("submit", async (e) => {
       photoUrls.push(publicUrl.publicUrl);
     }
     else {
-      console.error("Storage Upload Error Details:", error);
+      console.error("Storage upload error details:", error);
     }
   }
 
@@ -58,13 +63,15 @@ imageForm.addEventListener("submit", async (e) => {
     .select();
 
   if (data) {
+    currentScrapbookId = data[0].id;
     loadPhotosIntoBook(photoUrls);
   } 
   else {
-    console.error("Table Upload Error Details:", error);
+    console.error("Table upload error details:", error);
   }
 });
 
+// add uploaded photos to pages
 function loadPhotosIntoBook(urls) {
   let loadedCount = 0;
 
@@ -120,6 +127,7 @@ function loadPhotosIntoBook(urls) {
             document.querySelector("#upload").style.display = "none";
             leftButton.style.display = "flex";
             rightButton.style.display = "flex";
+            shareButton.style.display = "flex";
           }
         }
       });
@@ -131,22 +139,54 @@ async function checkUrlForScrapbook() {
   const bookId = urlParams.get('id');
 
   if (bookId) {
-    // Hide upload form immediately
+    // hide upload form immediately
     document.querySelector("#upload").style.display = "none";
 
     const { data, error } = await supabase
-      .from('scrapbooks')
+      .from('scrapbook')
       .select('photos')
       .eq('id', bookId)
       .single();
 
     if (data) {
       loadPhotosIntoBook(data.photos);
+      shareButton.style.display = "flex";
     }
   }
 }
 
 checkUrlForScrapbook();
+
+shareButton.addEventListener("click", () => {
+  // check for id in url
+  const urlParams = new URLSearchParams(window.location.search);
+  const idToShare = currentScrapbookId || urlParams.get('id');
+
+  if (!idToShare) {
+    alert("No scrapbook ID found to share!");
+    return;
+  }
+
+  // construct the URL
+  const shareUrl = `${window.location.origin}${window.location.pathname}?id=${idToShare}`;
+
+  // copy to clipboard
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    // Visual feedback
+    const originalText = shareButton.innerHTML;
+    shareButton.innerHTML = "Copied!";
+    shareButton.style.backgroundColor = "white"; 
+    shareButton.style.color = "black"; // feedback
+    
+    setTimeout(() => {
+      shareButton.innerHTML = originalText;
+      shareButton.style.backgroundColor = ""; 
+      shareButton.style.color = "white"; // reset to default
+    }, 2000);
+  }).catch(err => {
+    console.error("Could not copy text: ", err);
+  });
+});
 
 // create group to rotate book object
 const bookGroup = new THREE.Group();
