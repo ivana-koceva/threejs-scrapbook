@@ -38,23 +38,15 @@ imageForm.addEventListener("submit", async (e) => {
   }
 
   // upload images to bucket
-  const photoUrls = [];
-  for (const file of files.slice(0, requiredPhotos)) {
+  const uploadPromises = files.slice(0, requiredPhotos).map(async (file) => {
     const fileName = `${Date.now()}-${file.name}`;
-    const { data, error } = await supabase.storage
-      .from('scrapbook-photos')
-      .upload(fileName, file);
-
+    const { data } = await supabase.storage.from('scrapbook-photos').upload(fileName, file);
     if (data) {
-      const { data: publicUrl } = supabase.storage
-        .from('scrapbook-photos')
-        .getPublicUrl(fileName);
-      photoUrls.push(publicUrl.publicUrl);
+      const { data: publicUrl } = supabase.storage.from('scrapbook-photos').getPublicUrl(fileName);
+      return publicUrl.publicUrl;
     }
-    else {
-      console.error("Storage upload error details:", error);
-    }
-  }
+  });
+  const photoUrls = (await Promise.all(uploadPromises)).filter(url => url !== undefined);
 
   // save urls to table
   const { data, error } = await supabase
@@ -65,9 +57,6 @@ imageForm.addEventListener("submit", async (e) => {
   if (data) {
     currentScrapbookId = data[0].id;
     loadPhotosIntoBook(photoUrls);
-  } 
-  else {
-    console.error("Table upload error details:", error);
   }
 });
 
