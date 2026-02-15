@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import { createClient } from '@supabase/supabase-js';
+
+// supabase connection
+const URL   = import.meta.env.VITE_SUPABASE_URL;
+const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const supabase = createClient(URL, KEY);
 
 // defaults for threejs
 const scene = new THREE.Scene();
@@ -16,25 +22,55 @@ camera.position.z = 3;
 const imageForm = document.querySelector("#image-form");
 const imageInput = document.querySelector("#image-input");
 
-imageForm.addEventListener("submit", (e) => {
+imageForm.addEventListener("submit", async (e) => {
   e.preventDefault(); // stop page refresh
-  let loadedCount = 0;
 
   const files = Array.from(imageInput.files);
-  
+
   if (files.length < requiredPhotos) {
     alert(`Please select at least ${requiredPhotos} photos.`);
     return;
   }
 
-  const photosToProcess = files.slice(0, pageCount * 2);
+  // upload images to bucket
+  const photoUrls = [];
+  for (const file of files.slice(0, requiredPhotos)) {
+    const fileName = `${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage
+      .from('scrapbook-photos')
+      .upload(fileName, file);
 
-  photosToProcess.forEach((file, index) => {
-    const reader = new FileReader();
+    if (data) {
+      const { data: publicUrl } = supabase.storage
+        .from('scrapbook-photos')
+        .getPublicUrl(fileName);
+      photoUrls.push(publicUrl.publicUrl);
+    }
+    else {
+      console.error("Storage Upload Error Details:", error);
+    }
+  }
 
-    reader.onload = (event) => {
+  // save urls to table
+  const { data, error } = await supabase
+    .from('scrapbook')
+    .insert([{ photos: photoUrls }])
+    .select();
+
+  if (data) {
+    loadPhotosIntoBook(photoUrls);
+  } 
+  else {
+    console.error("Table Upload Error Details:", error);
+  }
+});
+
+function loadPhotosIntoBook(urls) {
+  let loadedCount = 0;
+
+  urls.forEach((url, index) => {
       const textureLoader = new THREE.TextureLoader();
-      textureLoader.load(event.target.result, (texture) => {
+      textureLoader.load(url, (texture) => {
       const sheetIndex = Math.floor(index / 2);
       const isFront = index % 2 === 0;
 
@@ -77,7 +113,7 @@ imageForm.addEventListener("submit", (e) => {
           loadedCount++;
 
           // reveal book when all iamges
-          if (loadedCount === requiredPhotos) {
+          if (loadedCount === urls.length) {
             bookGroup.visible = true;
             
             // hide form after upload and show buttons
@@ -87,10 +123,30 @@ imageForm.addEventListener("submit", (e) => {
           }
         }
       });
-    };
-    reader.readAsDataURL(file);
   });
-});
+};
+
+async function checkUrlForScrapbook() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const bookId = urlParams.get('id');
+
+  if (bookId) {
+    // Hide upload form immediately
+    document.querySelector("#upload").style.display = "none";
+
+    const { data, error } = await supabase
+      .from('scrapbooks')
+      .select('photos')
+      .eq('id', bookId)
+      .single();
+
+    if (data) {
+      loadPhotosIntoBook(data.photos);
+    }
+  }
+}
+
+checkUrlForScrapbook();
 
 // create group to rotate book object
 const bookGroup = new THREE.Group();
@@ -197,7 +253,7 @@ backPivot.rotation.y = 0; // open
 // pages
 const pages = [];
 const pageSurfaces = []; 
-const pageCount = 10;
+const pageCount = 2;
 const requiredPhotos = pageCount * 2;
 
 for (let i = 0; i < pageCount; i++) {
