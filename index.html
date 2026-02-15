@@ -8,6 +8,10 @@
     <title>Scrapbook</title>
   </head>
   <body>
+    <div id="loading-overlay" style="display: none;">
+      <div class="spinner"></div>
+      <p id="loading-text">Loading Scrapbook...</p>
+    </div>
     <div id="upload">
       <form id="image-form">
         <label for="image-input">Pick Your 20 Favorite Photos</label><br/>
@@ -17,6 +21,7 @@
     </div>
     <button id="left"><i class="fa-solid fa-arrow-left"></i></button>
     <button id="right"><i class="fa-solid fa-arrow-right"></i></button>
+    <button id="share">Share <i class="fa-solid fa-share-from-square"></i></button>
     <canvas id="main"></canvas>
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import { createClient } from '@supabase/supabase-js';
+
+// supabase connection
+const URL   = import.meta.env.VITE_SUPABASE_URL;
+const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const supabase = createClient(URL, KEY);
 
 // defaults for threejs
 const scene = new THREE.Scene();
@@ -7,34 +13,76 @@ const canvas = document.querySelector("#main");
 const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
 const leftButton = document.querySelector("#left");
 const rightButton = document.querySelector("#right");
+const shareButton = document.querySelector("#share");
 leftButton.style.display = "none";
 rightButton.style.display = "none";
+shareButton.style.display = "none";
 
 camera.position.z = 3;
+
+// loading spinner
+const loadingOverlay = document.querySelector("#loading-overlay");
+const loadingText = document.querySelector("#loading-text");
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function toggleLoader(show, text = "Loading") {
+  loadingOverlay.style.display = show ? "flex" : "none";
+  loadingText.textContent = text;
+}
 
 // get uploaded images
 const imageForm = document.querySelector("#image-form");
 const imageInput = document.querySelector("#image-input");
 
-imageForm.addEventListener("submit", (e) => {
+let currentScrapbookId = null;
+
+// upload to supabase
+imageForm.addEventListener("submit", async (e) => {
   e.preventDefault(); // stop page refresh
-  let loadedCount = 0;
 
   const files = Array.from(imageInput.files);
-  
+
   if (files.length < requiredPhotos) {
     alert(`Please select at least ${requiredPhotos} photos.`);
     return;
   }
 
-  const photosToProcess = files.slice(0, pageCount * 2);
+  toggleLoader(true, `Uploading photos`);
 
-  photosToProcess.forEach((file, index) => {
-    const reader = new FileReader();
+  // upload images to bucket
+  const uploadPromises = files.slice(0, requiredPhotos).map(async (file) => {
+    const fileName = `${Date.now()}-${file.name}`;
+    const { data } = await supabase.storage.from('scrapbook-photos').upload(fileName, file);
+    if (data) {
+      const { data: publicUrl } = supabase.storage.from('scrapbook-photos').getPublicUrl(fileName);
+      return publicUrl.publicUrl;
+    }
+  });
+  const photoUrls = (await Promise.all(uploadPromises)).filter(url => url !== undefined);
 
-    reader.onload = (event) => {
+  // save urls to table
+  const { data, error } = await supabase
+    .from('scrapbook')
+    .insert([{ photos: photoUrls }])
+    .select();
+
+  if (data) {
+    currentScrapbookId = data[0].id;
+    loadingText.textContent = "Almost there";
+    await sleep(1500);
+    loadPhotosIntoBook(photoUrls);
+  } else {
+    toggleLoader(false);
+  }
+});
+
+// add uploaded photos to pages
+function loadPhotosIntoBook(urls) {
+  let loadedCount = 0;
+
+  urls.forEach((url, index) => {
       const textureLoader = new THREE.TextureLoader();
-      textureLoader.load(event.target.result, (texture) => {
+      textureLoader.load(url, (texture) => {
       const sheetIndex = Math.floor(index / 2);
       const isFront = index % 2 === 0;
 
@@ -77,18 +125,75 @@ imageForm.addEventListener("submit", (e) => {
           loadedCount++;
 
           // reveal book when all iamges
-          if (loadedCount === requiredPhotos) {
+          if (loadedCount === urls.length) {
             bookGroup.visible = true;
-            
+            toggleLoader(false);
             // hide form after upload and show buttons
             document.querySelector("#upload").style.display = "none";
             leftButton.style.display = "flex";
             rightButton.style.display = "flex";
+            shareButton.style.display = "flex";
           }
         }
       });
-    };
-    reader.readAsDataURL(file);
+  });
+};
+
+async function checkUrlForScrapbook() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const bookId = urlParams.get('id');
+
+  if (bookId) {
+    // hide upload form immediately
+    document.querySelector("#upload").style.display = "none";
+
+    toggleLoader(true, "Fetching your memories");
+    const { data, error } = await supabase
+      .from('scrapbook')
+      .select('photos')
+      .eq('id', bookId)
+      .single();
+
+    if (data) {
+      await sleep(1000);
+      loadPhotosIntoBook(data.photos);
+      shareButton.style.display = "flex";
+    } else {
+      toggleLoader(false);
+    }
+  }
+}
+
+checkUrlForScrapbook();
+
+shareButton.addEventListener("click", () => {
+  // check for id in url
+  const urlParams = new URLSearchParams(window.location.search);
+  const idToShare = currentScrapbookId || urlParams.get('id');
+
+  if (!idToShare) {
+    alert("No scrapbook ID found to share!");
+    return;
+  }
+
+  // construct the URL
+  const shareUrl = `${window.location.origin}${window.location.pathname}?id=${idToShare}`;
+
+  // copy to clipboard
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    // Visual feedback
+    const originalText = shareButton.innerHTML;
+    shareButton.innerHTML = "Copied!";
+    shareButton.style.backgroundColor = "white"; 
+    shareButton.style.color = "black"; // feedback
+    
+    setTimeout(() => {
+      shareButton.innerHTML = originalText;
+      shareButton.style.backgroundColor = ""; 
+      shareButton.style.color = "white"; // reset to default
+    }, 2000);
+  }).catch(err => {
+    console.error("Could not copy text: ", err);
   });
 });
 
