@@ -4,10 +4,11 @@ import * as THREE from 'three';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
-const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
-
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
 const leftButton = document.querySelector("#left");
 const rightButton = document.querySelector("#right");
+leftButton.style.display = "none";
+rightButton.style.display = "none";
 
 camera.position.z = 3;
 
@@ -17,11 +18,12 @@ const imageInput = document.querySelector("#image-input");
 
 imageForm.addEventListener("submit", (e) => {
   e.preventDefault(); // stop page refresh
+  let loadedCount = 0;
 
   const files = Array.from(imageInput.files);
   
-  if (files.length === 0) {
-    alert("Please select some photos first!");
+  if (files.length < requiredPhotos) {
+    alert(`Please select at least ${requiredPhotos} photos.`);
     return;
   }
 
@@ -71,24 +73,43 @@ imageForm.addEventListener("submit", (e) => {
 
           photoMaterial.map = texture;
           photoMaterial.needsUpdate = true;
+
+          loadedCount++;
+
+          // reveal book when all iamges
+          if (loadedCount === requiredPhotos) {
+            bookGroup.visible = true;
+            
+            // hide form after upload and show buttons
+            document.querySelector("#upload").style.display = "none";
+            leftButton.style.display = "flex";
+            rightButton.style.display = "flex";
+          }
         }
       });
     };
     reader.readAsDataURL(file);
   });
-
-  // hide form after upload
-  document.querySelector("#upload").style.display = "none";
 });
 
 // create group to rotate book object
 const bookGroup = new THREE.Group();
 scene.add(bookGroup);
+bookGroup.visible = false;
 
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+// crying lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(2, 4, 5);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+fillLight.position.set(-3, 2, 2);
+scene.add(fillLight);
 
 // draw rounded rectangle in 2d
 function roundedRectShape(width, height, radius) {
@@ -161,10 +182,10 @@ const backPivot = new THREE.Group();
 scene.add(backPivot);
 bookGroup.add(backPivot);
 
-const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/paper.jpg");
 frontCover.position.set(-1, 0, -0.1);
 
-const backCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+const backCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/paper.jpg");
 backCover.position.set(1, 0, -0.1);
 
 coverPivot.add(frontCover);
@@ -177,10 +198,11 @@ backPivot.rotation.y = 0; // open
 const pages = [];
 const pageSurfaces = []; 
 const pageCount = 10;
+const requiredPhotos = pageCount * 2;
 
 for (let i = 0; i < pageCount; i++) {
   const pagePivot = new THREE.Group();
-  const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper2.jpg");
+  const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper.jpg");
 
   // offset page to rotate around spine
   page.position.set(-0.95, 0, -0.001 + i * 0.002);
@@ -192,8 +214,8 @@ for (let i = 0; i < pageCount; i++) {
   pages.push(pagePivot);
 
   const photoGeo = new THREE.PlaneGeometry(1.9, 2.8);
-  const frontPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }));
-  const backPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  const frontPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 }));
+  const backPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 }));
   
   frontPhoto.position.set(0, 0, 0.011);
   backPhoto.rotation.y = Math.PI;
@@ -205,7 +227,8 @@ for (let i = 0; i < pageCount; i++) {
 }
 
 // background
-const backgroundTexture = new THREE.TextureLoader().load('/images/sky.jpg');
+const backgroundTexture = new THREE.TextureLoader().load('/images/gradient.jpg');
+backgroundTexture.colorSpace = THREE.SRGBColorSpace;
 scene.background = backgroundTexture;
 
 // flipping logic
@@ -265,7 +288,7 @@ leftButton.addEventListener("click", () => {
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.09;
+  const speed = 0.06;
 
   // flip front cover
   if (flipping === "frontCover") {
