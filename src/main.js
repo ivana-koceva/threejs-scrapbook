@@ -432,7 +432,7 @@ leftButton.addEventListener("click", () => {
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.05;
+  const speed = 0.06;
 
   // flip front cover
   if (flipping === "frontCover") {
