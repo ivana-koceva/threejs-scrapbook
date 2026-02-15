@@ -4,21 +4,112 @@ import * as THREE from 'three';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const canvas = document.querySelector("#main");
-const renderer = new THREE.WebGLRenderer({canvas}, {antialias: true});
-
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
 const leftButton = document.querySelector("#left");
 const rightButton = document.querySelector("#right");
+leftButton.style.display = "none";
+rightButton.style.display = "none";
 
 camera.position.z = 3;
+
+// get uploaded images
+const imageForm = document.querySelector("#image-form");
+const imageInput = document.querySelector("#image-input");
+
+imageForm.addEventListener("submit", (e) => {
+  e.preventDefault(); // stop page refresh
+  let loadedCount = 0;
+
+  const files = Array.from(imageInput.files);
+  
+  if (files.length < requiredPhotos) {
+    alert(`Please select at least ${requiredPhotos} photos.`);
+    return;
+  }
+
+  const photosToProcess = files.slice(0, pageCount * 2);
+
+  photosToProcess.forEach((file, index) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.load(event.target.result, (texture) => {
+      const sheetIndex = Math.floor(index / 2);
+      const isFront = index % 2 === 0;
+
+      if (pageSurfaces[sheetIndex]) {
+        const targetMesh = isFront
+          ? pageSurfaces[sheetIndex].front
+          : pageSurfaces[sheetIndex].back;
+
+          const photoMaterial = targetMesh.material;
+
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.colorSpace = THREE.SRGBColorSpace;
+
+          const isLandscape = texture.image.width > texture.image.height;
+
+          // center the transform pivot (rotate and scale from the middle)
+          texture.center.set(0.5, 0.5);
+
+          texture.rotation = isLandscape ? Math.PI / 2 : 0;
+
+          // plane aspect = exact geometry size
+          const pageAspect = 1.9 / 2.8;
+          const imageAspect = isLandscape 
+            ? texture.image.height / texture.image.width 
+            : texture.image.width / texture.image.height;
+
+          // "object-fit: cover"
+          if (imageAspect > pageAspect) {
+            texture.repeat.set(pageAspect / imageAspect, 1);
+          } else {
+            texture.repeat.set(1, imageAspect / pageAspect);
+          }
+          
+          texture.offset.set(0, 0);
+
+          photoMaterial.map = texture;
+          photoMaterial.needsUpdate = true;
+
+          loadedCount++;
+
+          // reveal book when all iamges
+          if (loadedCount === requiredPhotos) {
+            bookGroup.visible = true;
+            
+            // hide form after upload and show buttons
+            document.querySelector("#upload").style.display = "none";
+            leftButton.style.display = "flex";
+            rightButton.style.display = "flex";
+          }
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+});
 
 // create group to rotate book object
 const bookGroup = new THREE.Group();
 scene.add(bookGroup);
+bookGroup.visible = false;
 
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+// crying lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(2, 4, 5);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+fillLight.position.set(-3, 2, 2);
+scene.add(fillLight);
 
 // draw rounded rectangle in 2d
 function roundedRectShape(width, height, radius) {
@@ -39,11 +130,25 @@ function roundedRectShape(width, height, radius) {
 
 // add geometry to object
 function createExtrudeGeometry(object, depth, bevel, curves) {
-  return new THREE.ExtrudeGeometry(object, {
+  const geo = new THREE.ExtrudeGeometry(object, {
     depth: depth,
     bevelEnabled: bevel,
     curveSegments: curves
   }).center();
+
+  // VERY IMPORTANT:
+  // materialIndex 0 = sides
+  // materialIndex 1 = front/back caps
+
+  geo.groups.forEach(g => {
+    if (g.materialIndex === 0) {
+      g.materialIndex = 0; // keep paper on edges
+    } else {
+      g.materialIndex = 1; // caps will use photo material
+    }
+  });
+
+  return geo;
 }
 
 // add repeating texture to object
@@ -77,10 +182,10 @@ const backPivot = new THREE.Group();
 scene.add(backPivot);
 bookGroup.add(backPivot);
 
-const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+const frontCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/paper.jpg");
 frontCover.position.set(-1, 0, -0.1);
 
-const backCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/leather.jpg");
+const backCover = addShapeToScene(coverShape, 0.15, false, 12,"/images/paper.jpg");
 backCover.position.set(1, 0, -0.1);
 
 coverPivot.add(frontCover);
@@ -91,26 +196,39 @@ backPivot.rotation.y = 0; // open
 
 // pages
 const pages = [];
+const pageSurfaces = []; 
 const pageCount = 10;
+const requiredPhotos = pageCount * 2;
 
 for (let i = 0; i < pageCount; i++) {
   const pagePivot = new THREE.Group();
+  const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper.jpg");
 
-  const page = addShapeToScene(pageShape, 0.02, false, 12, "/images/paper2.jpg");
-
-  // move page away from pivot so it flips from spine
-  page.position.set(-0.95, 0, -0.001);
+  // offset page to rotate around spine
+  page.position.set(-0.95, 0, -0.001 + i * 0.002);
 
   pagePivot.add(page);
-  pagePivot.rotation.y = Math.PI; // closed
+  pagePivot.rotation.y = Math.PI; // start closed (on the right side)
 
-  scene.add(pagePivot);
   bookGroup.add(pagePivot);
   pages.push(pagePivot);
+
+  const photoGeo = new THREE.PlaneGeometry(1.9, 2.8);
+  const frontPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 }));
+  const backPhoto = new THREE.Mesh(photoGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 }));
+  
+  frontPhoto.position.set(0, 0, 0.011);
+  backPhoto.rotation.y = Math.PI;
+  backPhoto.position.set(0, 0, -0.011);
+
+  page.add(frontPhoto);
+  page.add(backPhoto);
+  pageSurfaces.push({ front: frontPhoto, back: backPhoto });
 }
 
 // background
-const backgroundTexture = new THREE.TextureLoader().load('/images/sky.jpg');
+const backgroundTexture = new THREE.TextureLoader().load('/images/gradient.jpg');
+backgroundTexture.colorSpace = THREE.SRGBColorSpace;
 scene.background = backgroundTexture;
 
 // flipping logic
@@ -144,11 +262,11 @@ rightButton.addEventListener("click", () => {
 
 leftButton.addEventListener("click", () => {
   if (flipping) return;
-  
+
   backwards = true;
   
   // next clicks opens back cover
-  if (currentPage === pages.length && backPivot.rotation.y !== 0) {
+  if (currentPage === pages.length && Math.abs(backPivot.rotation.y) > 1) {
     flipping = "backCover";
     return;
   }
@@ -161,85 +279,52 @@ leftButton.addEventListener("click", () => {
   }
 
   // next clicks closes cover
-  if (coverFlipped) {
+  if (coverFlipped && currentPage === 0) {
     flipping = "frontCover";
     return;
   }
 });
 
-// update animation each frame
 function animateRenderer() {
   requestAnimationFrame(animateRenderer);
 
-  const speed = 0.07;
+  const speed = 0.06;
 
   // flip front cover
   if (flipping === "frontCover") {
-    if(backwards) {
-      coverPivot.rotation.y +=
-      (Math.PI - coverPivot.rotation.y) * speed;
+    const target = backwards ? Math.PI : 0;
+    coverPivot.rotation.y += (target - coverPivot.rotation.y) * speed;
 
-      if (Math.abs(coverPivot.rotation.y - Math.PI) < 0.01) {
-        coverPivot.rotation.y = Math.PI;
-        coverFlipped = false;
-        flipping = false;
-      }
-    }
-    else {
-      coverPivot.rotation.y +=
-      (0 - coverPivot.rotation.y) * speed;
-
-      if (Math.abs(coverPivot.rotation.y) < 0.01) {
-        coverPivot.rotation.y = 0;
-        coverFlipped = true;
-        flipping = false;
-      }
+    if (Math.abs(coverPivot.rotation.y - target) < 0.01) {
+      coverPivot.rotation.y = target;
+      coverFlipped = !backwards;
+      flipping = false;
     }
   }
 
   // flip single page
   if (flipping === "page") {
     const page = pages[currentPage];
-    if (backwards) {
-      page.rotation.y +=
-      (Math.PI - page.rotation.y) * speed;
-
-      if (Math.abs(page.rotation.y - Math.PI) < 0.01) {
-        page.rotation.y = Math.PI;
-        flipping = false;
-      }
-    }
-    else {
-      page.rotation.y +=
-      (0 - page.rotation.y) * speed;
-
-      if (Math.abs(page.rotation.y) < 0.01) {
-        page.rotation.y = 0;
-        currentPage++;
-        flipping = false;
-      }
-    }
+    const target = backwards ? Math.PI : 0;
     
+    page.rotation.y += (target - page.rotation.y) * speed;
+
+    if (Math.abs(page.rotation.y - target) < 0.01) {
+      page.rotation.y = target;
+      if (!backwards) currentPage++; 
+      flipping = false;
+    }
   }
 
   // flip back cover
   if (flipping === "backCover") {
-    if (backwards) {
-      backPivot.rotation.y += (0 - backPivot.rotation.y) * speed;
-      if (Math.abs(backPivot.rotation.y - 0) < 0.01) {
-        backPivot.rotation.y = 0;
-        flipping = false;
-      }
+    const target = backwards ? 0 : -Math.PI;
+    backPivot.rotation.y += (target - backPivot.rotation.y) * speed;
+
+    if (Math.abs(backPivot.rotation.y - target) < 0.01) {
+      backPivot.rotation.y = target;
+      flipping = false;
     }
-    else {
-      const targetRotation = -Math.PI;
-      backPivot.rotation.y += (targetRotation - backPivot.rotation.y) * speed;
-      if (Math.abs(backPivot.rotation.y - targetRotation) < 0.01) {
-        backPivot.rotation.y = targetRotation;
-        flipping = false;
-      }
-    }
-    
   }
 
   renderer.render(scene, camera);
