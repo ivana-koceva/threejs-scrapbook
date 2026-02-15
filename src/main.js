@@ -20,6 +20,16 @@ shareButton.style.display = "none";
 
 camera.position.z = 3;
 
+// loading spinner
+const loadingOverlay = document.querySelector("#loading-overlay");
+const loadingText = document.querySelector("#loading-text");
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function toggleLoader(show, text = "Loading") {
+  loadingOverlay.style.display = show ? "flex" : "none";
+  loadingText.textContent = text;
+}
+
 // get uploaded images
 const imageForm = document.querySelector("#image-form");
 const imageInput = document.querySelector("#image-input");
@@ -36,6 +46,8 @@ imageForm.addEventListener("submit", async (e) => {
     alert(`Please select at least ${requiredPhotos} photos.`);
     return;
   }
+
+  toggleLoader(true, `Uploading photos`);
 
   // upload images to bucket
   const uploadPromises = files.slice(0, requiredPhotos).map(async (file) => {
@@ -56,7 +68,11 @@ imageForm.addEventListener("submit", async (e) => {
 
   if (data) {
     currentScrapbookId = data[0].id;
+    loadingText.textContent = "Almost there";
+    await sleep(1500);
     loadPhotosIntoBook(photoUrls);
+  } else {
+    toggleLoader(false);
   }
 });
 
@@ -111,7 +127,7 @@ function loadPhotosIntoBook(urls) {
           // reveal book when all iamges
           if (loadedCount === urls.length) {
             bookGroup.visible = true;
-            
+            toggleLoader(false);
             // hide form after upload and show buttons
             document.querySelector("#upload").style.display = "none";
             leftButton.style.display = "flex";
@@ -131,6 +147,7 @@ async function checkUrlForScrapbook() {
     // hide upload form immediately
     document.querySelector("#upload").style.display = "none";
 
+    toggleLoader(true, "Fetching your memories");
     const { data, error } = await supabase
       .from('scrapbook')
       .select('photos')
@@ -138,8 +155,11 @@ async function checkUrlForScrapbook() {
       .single();
 
     if (data) {
+      await sleep(1000);
       loadPhotosIntoBook(data.photos);
       shareButton.style.display = "flex";
+    } else {
+      toggleLoader(false);
     }
   }
 }
